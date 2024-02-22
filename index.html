@@ -1,0 +1,238 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<style>
+  body {
+    padding: 100px;
+    width: 1000px;
+    margin: auto;
+    text-align: left;
+    font-weight: 300;
+    font-family: 'Open Sans', sans-serif;
+    color: #121212;
+  }
+  h1, h2, h3, h4 {
+    font-family: 'Source Sans Pro', sans-serif;
+  }
+</style>
+<title>CS 184/284A Rasterizer</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<link href="https://fonts.googleapis.com/css?family=Open+Sans|Source+Sans+Pro" rel="stylesheet">
+</head>
+
+
+<body>
+
+<h1 align="middle">CS 184/284A: Computer Graphics and Imaging, Spring 2024</h1>
+<h1 align="middle">Homework 1: Rasterizer</h1>
+<h2 align="middle">Razvan-Cristian Turcu</h2>
+
+<br><br>
+
+<div>
+
+<h2 align="middle">Overview</h2>
+<p>Give a high-level overview of what you implemented in this homework Think about what you've built as a whole. Share your thoughts on what interesting things you've learned from completing the homework.</p>
+
+<h2 align="middle">Section I: Rasterization</h2>
+
+<h3 align="middle">Part 1: Rasterizing single-color triangles</h3>
+
+<p>Rasterizing triangles means filling up the pixels inside of a triangle to obtain a certain 
+  image. Triangles are the basis of any shape and this section was important in understanding how to visually compute them.
+  My algorithm is no worse than checking each box of the triangle because it does not go through each pixel in the buffer. Instead, 
+  it finds the minimum and maximum for the x and y coordinates of the triangle and checks if each point within that range is inside the triangle or not. If it is,
+  then the algorithm fills the pixel with the given color inside of the triangle. 
+</p>
+
+<div align="middle">
+  <table style="width=100%">
+    <tr>
+      <td>
+        <img src="images/problem1.png" align="middle" width="600px"/>
+        <figcaption align="middle">Figure 1: Because Antialiasing is not implemented yet, "the jaggies" of the pink triangle are obvious.</figcaption>
+      </td>
+      <!-- <td>
+        <img src="images/image2.png" align="middle" width="400px"/>
+        <figcaption align="middle">Caption goes here.</figcaption>
+      </td> -->
+    </tr>
+    <!-- <br>
+    <tr>
+      <td>
+        <img src="images/image3.png" align="middle" width="400px"/>
+        <figcaption align="middle">Caption goes here.</figcaption>
+      </td>
+      <td>
+        <img src="images/image4.png" align="middle" width="400px"/>
+        <figcaption align="middle">Caption goes here.</figcaption>
+      </td>
+    </tr> -->
+  </table>
+</div>
+
+
+<h3 align="middle">Part 2: Antialiasing triangles</h3>
+<p>
+  Supersampling is a method to remove the "jaggies" that we saw in the previous part through
+  Antialiasing. In theory in class, we saw that to do so, we are going to take a larger sample of neighboring pixels (when looping through the pixels in the triangle) and compute
+  the average color between those pixels. Then, we are going to fill each pixel with the corresponding average. In practice,
+  however, I realized that the most efficient way to do so is to multiply the size of the sample buffer (which is an array of RGB values)
+  by the sampling rate. Thus, we I "artificially" created a larger sample buffer to abstract the supersampling theoretical method efficiently. This make computation of the average pixel color easier to implement.
+  Every time the sampling rate is updated, I updated the sampling rate variable and size of the sample buffer in my implementation to take into account supersampling at different rates. 
+  The resolve_to_framebuffer() method is used every time the sampling rate is updated to extract the color averages for each pixel as the rasterization pipeline is
+  updating the memory necessary for the frame buffer at runtime. 
+</p>
+<div align="middle">
+  <table style="width=100%">
+    <tr align="middle">
+      <td>
+        <img src="images/problem2-1.png" align="middle" width="400px"/>
+        <figcaption align="middle">Figure 2a: Jaggies present at the tip of the pink triangle (Sample Rate = 1)</figcaption>
+      </td>
+      <td>
+        <img src="images/problem2-2.png" align="middle" width="400px"/>
+        <figcaption align="middle">Figure 2b: At least the triangle connects to the furthest point at the top (Sample Rate = 4)</figcaption>
+      </td>
+    </tr>
+    <br>
+    <tr align="middle">
+      <td>
+        <img src="images/problem2-3.png" align="middle" width="400px"/>
+        <figcaption align="middle">Figure 2c: Supersampling removes jaggies and shows a smoother transition to the top of the triangle (Sample Rate = 8)</figcaption>
+      </td>
+      <td>
+        <img src="images/problem2-4.png" align="middle" width="400px"/>
+        <figcaption align="middle">Figure 2d: Supersampling makes the picture antialiased although there is still a blurred point not conencted to the triangle, but not visible to the eye. (Sampling Rate = 16)</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+
+
+
+<h3 align="middle">Part 3: Transforms</h3>
+<p>
+  In this problem, I implemented the transforms functions with the algebra deduced in class. I made the robot's head rotate so it looks normal and I also made it hold one hand up and one hand down doing the robot dance.
+</p>
+<div align="middle">
+  <table style="width=100%">
+    <tr align="middle">
+      <td>
+        <img src="images/problem3.png" align="middle" width="400px"/>
+        <figcaption align="middle">Figure 3: Transformed robot</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+
+
+
+<h2 align="middle">Section II: Sampling</h2>
+
+<h3 align="middle">Part 4: Barycentric coordinates</h3>
+<p>
+  Barycentric coordinates are a way to represent a point inside a triangle having the 3 vertices as reference. To do so, we need a weighted sum of the three vertices, where alpha beta and gamma assign the weight of each vertex.
+  The weight essentially represents how much the point inside triangle is "pulled" by the three vertices. If we know alpha and beta we can compute gamma easily because the sum of the weights should always be 1. Barycentric coordinates can be used to represent gradient
+  colors inside of the triangle by assigning an RGB color to each of the three vertices. The inside points will be a combination of those three colors depending of how close the inside point is to each of the three vertices.
+</p>
+<div align="middle">
+  <table style="width=100%">
+    <tr align="middle">
+      <td>
+        <img src="images/problem4-1.png" align="middle" width="400px"/>
+        <figcaption align="middle">Figure 4a: Gradient Colors Triangle. I assigned green, red, and blue to each vertex and the resulting colors inside the triangle show a gradient between each of the colors of the vertices.</figcaption>
+      </td>
+      <td>
+        <img src="images/problem4-2.png" align="middle" width="400px"/>
+        <figcaption align="middle">Figure 4b: Colorwheel</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+
+
+<h3 align="middle">Part 5: "Pixel sampling" for texture mapping</h3>
+<p>
+  Pixel sampling for texture mapping means finding which pixel from a texture corresponds to the pixel that we see on screen. In class, we saw that textures are non-linear. Thus, we looked at 2 methods to map pixels from textures to screenspace: nearest and bilinear sampling.
+  To get the texel pixels, I recognized that I need to calculate the Barycentric coordinates (like in the previous part) to determine how close the point is to each of the vertices and, therefore, determine a relative position. 
+  To implement nearest neighbor sampling for the "uv" relative position, I adjusted uv's coordinates to the size of the texture map and found the closest texel. For bilinear sampling, however, I found the closest 4 texels and performed two horizontal LERP operations (as discussed in lecture) and 
+  one vertical LERP operation.<br/><br/>
+  We can recognize the difference between the two sampling methods. In the first figure, where we use the nearest neighbor and a sample_rate=1, pixels seem like they are out of place. This is because the frequency of colors is very high due to the details of the clock. In bilinear interpolation, however, 
+  because the resulting pixels in the image are found through 3 additional values in the texel, we see less pixels looking out of place. As we increase the sampling rate to 16, we see more details of the tower being shown, and less jaggies. Moreover, bilinear interpolation shows smoother lines than nearest neighbor
+  even though the sampling rate is so high.
+</p>
+
+<div align="middle">
+  <table style="width=100%">
+    <tr align="middle">
+      <td>
+        <img src="images/problem5-1.png" align="middle" width="400px"/>
+        <figcaption align="middle">Figure 5a: Sample rate=1, Nearest Neighbor</figcaption>
+      </td>
+      <td>
+        <img src="images/problem5-2.png" align="middle" width="400px"/>
+        <figcaption align="middle">Figure 5b: Sample rate=1, Bilinear</figcaption>
+      </td>
+    </tr>
+    <tr align="middle">
+      <td>
+        <img src="images/problem5-3.png" align="middle" width="400px"/>
+        <figcaption align="middle">Figure 5c: Sample rate=16, Nearest Neighbor</figcaption>
+      </td>
+      <td>
+        <img src="images/problem5-4.png" align="middle" width="400px"/>
+        <figcaption align="middle">Figure 5d: Sample rate=16, Bilinear</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+
+
+<h3 align="middle">Part 6: "Level sampling" with mipmaps for texture mapping</h3>
+
+<p>
+  In texture-mapping, one pixel in screen space can be as big as multiple texels in texture space, which leads to blurring and "jaggies". This concept 
+  was introduced in lecture as minification and it usually happens when there are a lot of details in the texture or when a large texture is applied to a small geometry.
+  Both of these cases can be observed in the texture mapping below of "The Last Supper", by Leonardo DaVinci. The painting is very detailed. At the same time, it is large and the small 
+  geometry of the screen space is much smaller than the actual painting. We address this through Mipmap Level Sampling, which essentially means that we compute downsampled versions of the texture
+  at different levels of detail. To do so, I used the Jacobian Matrix discussed in class that computes the "trace" left by each pixel in texture space. Mipmaps are more efficient in terms of speed
+  than supersampling and require less memory for desired antialising. Supersampling, however, can sometimes be more efficient than Mipmaps as we see from Figure 6b compared to Figure 6c.
+  Bilinear sampling shows a clear line for the frame of the window (Figure 6b), whereas Nearest Mipmap level without Bilinear sampling has a fractured window frame with jaggies (Figure 6c). When we combine both Nearest Level
+  and Bilinear interpolation, we obtain clearly defined lines and little to no jaggies (Figure 6d). I observed, however, that combining both leads to lower Framerate, meaning that there are computational drawbacks to using both techniques at the same time.
+</p>
+
+<div align="middle">
+  <table style="width=100%">
+    <tr align="middle">
+      <td>
+        <img src="images/problem6-1.png" align="middle" width="400px"/>
+        <figcaption align="middle">Figure 5a: Level: Zero, Sampling: Nearest</figcaption>
+      </td>
+      <td>
+        <img src="images/problem6-2.png" align="middle" width="400px"/>
+        <figcaption align="middle">Figure 5b: Level: Zero, Sampling: Bilinear</figcaption>
+      </td>
+    </tr>
+    <tr align="middle">
+      <td>
+        <img src="images/problem6-3.png" align="middle" width="400px"/>
+        <figcaption align="middle">Figure 5c: Level: Nearest, Sampling: Nearest</figcaption>
+      </td>
+      <td>
+        <img src="images/problem6-4.png" align="middle" width="400px"/>
+        <figcaption align="middle">Figure 5d: Level: Nearest, Sampling: Bilinear</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+
+
+
+<h2 align="middle">Section III: Art Competition</h2>
+<p>If you are not participating in the optional art competition, don't worry about this section!</p>
+
+<h3 align="middle">Part 7: Draw something interesting!</h3>
+
+</body>
+</html>
